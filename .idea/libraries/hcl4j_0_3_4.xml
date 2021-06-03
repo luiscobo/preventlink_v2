@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="hcl4j-0.3.4">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/hcl4j-0.3.4.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
