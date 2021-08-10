@@ -75,9 +75,10 @@ object Monitor {
             if (conf != null) {
                 var tagSupMax = 0
                 var tagSupMin = 0
+                // Primero los tags
                 for (tagId in conf.epps) {
                     val epp = escenario.epps[tagId]
-                    if (epp != null) {
+                    if (epp != null && epp.activo) {
                         val t = epp.tiempoUltimaPresencia
                         Reporte.info("Tiempo para el tag $tagId = $t")
                         if (t >= conf.tiempoAusenciaMaximo) {
@@ -89,6 +90,22 @@ object Monitor {
                         }
                     }
                 }
+                // Ahora los sensores remotos
+                for (sensorId in conf.sensores) {
+                    val sensor = escenario.sensores[sensorId]
+                    if (sensor != null && sensor.activo) {
+                        val t = sensor.tiempo
+                        Reporte.info("Tiempo del sensor ${sensorId} = $t")
+                        if (t >= conf.tiempoAusenciaMaximo) {
+                            Reporte.info("Tiempo del EPP $sensorId superado")
+                            tagSupMax++
+                        }
+                        else if (t >= conf.tiempoAusenciaMinimo) {
+                            tagSupMin++
+                        }
+                    }
+                }
+
                 generarEvento(tagSupMin, tagSupMax)
             }
         }

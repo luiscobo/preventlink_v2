@@ -31,6 +31,8 @@ data class Escenario(val nombreArchivo: String) {
 
     var epps: HashMap<String, EPP> = HashMap()
 
+    var sensores: HashMap<String, SensorRemoto> = HashMap()
+
     var configuraciones: HashMap<String, Configuracion> = HashMap()
 
     var monitorNombre: String = "MonitorPreventLink"
@@ -38,6 +40,12 @@ data class Escenario(val nombreArchivo: String) {
     var monitorDemoraInicial: Long = 1000L
 
     var monitorPeriodo: Long = 1000L
+
+    var comunicadorNombre: String = "ComunicadorPreventLink"
+
+    var comunicadorDemoraInicial: Long = 1000L
+
+    var comunicadorPeriodo: Long = 1000
 
     private var configuracionActiva: String = ""
 
@@ -83,6 +91,7 @@ data class Escenario(val nombreArchivo: String) {
                     }
                 }
             }
+
             // Ahora vienen los EPPs
             val eppInfoLista = res["epp"] as Map<String, Any?>?
             if (eppInfoLista != null) {
@@ -94,6 +103,19 @@ data class Escenario(val nombreArchivo: String) {
                     }
                 }
             }
+
+            // Ahora vienen los sensores remotos
+            val sensorLista = res["sensor"] as Map<String, Any?>?
+            if (sensorLista != null) {
+                for (sensorID in sensorLista.keys) {
+                    val sensorInfo = sensorLista[sensorID] as Map<String, Any?>
+                    val sensor = SensorRemoto.leerDesdeConfiguracionHCL(sensorID, sensorInfo)
+                    if (sensor != null) {
+                        this.sensores[sensorID] = sensor
+                    }
+                }
+            }
+
             // Finalmente nos quedamos con las configuraciones
             val configInfoLista = res["configuracion"] as Map<String, Any?>?
             if (configInfoLista != null) {
@@ -124,6 +146,19 @@ data class Escenario(val nombreArchivo: String) {
                     monitorPeriodo = monitorInfo["periodo"]!!.toString().toDouble().toLong()
                 }
             }
+
+            if (res["comunicador"] != null) {
+                val info = res["comunicador"] as Map<String, Any?>
+                if (info["nombre"] != null) {
+                    comunicadorNombre = info["nombre"]!!.toString()
+                }
+                if (info["esperaInicial"] != null) {
+                    comunicadorDemoraInicial = info["esperaInicial"]!!.toString().toDouble().toLong()
+                }
+                if (info["periodo"] != null) {
+                    comunicadorPeriodo = info["periodo"]!!.toString().toDouble().toLong()
+                }
+            }
         }
     }
 
@@ -151,6 +186,10 @@ data class Escenario(val nombreArchivo: String) {
         // Ahora vienen los EPPs
         for (epp in epps.values) {
             epp.convertirHCL(builder)
+        }
+        // Ahora vienen los sensores
+        for (sensor in sensores.values) {
+            sensor.convertirHCL(builder)
         }
         // Finalmente las configuraciones
         for (config in configuraciones.values) {

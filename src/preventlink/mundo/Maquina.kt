@@ -65,6 +65,10 @@ class Maquina(var identificador: String,
      * Enciende la máquina
      */
     fun encender() {
+        if (estado != "OK") {
+            return  // No se puede tocar la maquina en estado inactiva
+        }
+
         if (_encendida) {
             return
         }
@@ -84,16 +88,23 @@ class Maquina(var identificador: String,
     /**
      * Apagar la máquina
      */
-    fun apagar() {
-        if (!_encendida) {
+    fun apagar(final: Boolean = false) {
+        if (estado != "OK") {
             return
         }
+
+        if (!final && !_encendida) {
+            return
+        }
+
         val escenario = Escenario.instance()
         if (escenario != null) {
             val gpio = escenario.gpioConfiguracionActual()
             if (gpio != null) {
                 gpio.finalizar()
-                gpio.encenderRojo()
+                if (!final) {
+                    gpio.encenderRojo()
+                }
                 _encendida = false
                 Reporte.info("Maquina apagada")
             }
@@ -104,6 +115,9 @@ class Maquina(var identificador: String,
      * Alarma sonora
      */
     fun alarmaSonora(encender: Boolean) {
+        if (estado != "OK") {
+            return
+        }
         if (!_encendida) {
             return
         }

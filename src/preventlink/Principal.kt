@@ -25,40 +25,61 @@ fun main() {
     if (escenario != null) {
         val lector: Lector? = escenario.lectorConfiguracionActual()
         val maquina = escenario.maquinaConfiguracionActual()
-        if (lector != null && maquina != null) {
+        if (lector != null) {
             Reporte.info("Conectandose al lector en la dirección ${lector.IP}")
             if (lector.activar()) {
                 Reporte.info("Iniciando lectura de datos")
                 lector.iniciarLectura()
-
-                // Ahora que el lector arrancó, iniciamos el monitor
-                Reporte.info("Iniciando monitorización")
-                estado = 1
-                Monitor.agregarObservador(etapa1)
-                Monitor.agregarObservador(etapa2)
-                Monitor.agregarObservador(etapa3)
-                Monitor.iniciar()
-
-                // Ahora iniciamos la máquina
-                Reporte.info("Iniciando la máquina ${maquina.nombre}")
-                maquina.apagar()
-
-                println("Entre ENTER para finalizar")
-                readLine()!!
-
-                // Finalizamos el monitor
-                Reporte.info("Finalizando monitorización")
-                Monitor.finalizar()
-
-                // Finalizamos el lector
-                Reporte.info("Finalizando lectura de tags")
-                lector.finalizarLectura()
             }
         }
-        else if (lector == null) {
+        else {
             Reporte.error("No hay lector de RFID configurado")
         }
-        else if (maquina == null) {
+
+        // Ahora que el lector arrancó, iniciamos el monitor
+        Reporte.info("Iniciando monitorización")
+        estado = 1
+        Monitor.agregarObservador(etapa1)
+        Monitor.agregarObservador(etapa2)
+        Monitor.agregarObservador(etapa3)
+        Monitor.iniciar()
+
+        // Arrancamos el comunicador
+        Reporte.info("Iniciando comunicación con sensores")
+        ComunicadorSensores.iniciar()
+
+        // Ahora iniciamos la máquina
+        if (maquina != null && maquina.estado == "OK") {
+            Reporte.info("Iniciando la máquina ${maquina.nombre}")
+            maquina.apagar(final = true)
+        }
+        else {
+            Reporte.error("No hay máquina configurada!")
+        }
+
+        println("Entre ENTER para finalizar")
+        readLine()!!
+
+        // Finalizamos el comunicador
+        Reporte.info("Terminando el comunicador con los sensores")
+        ComunicadorSensores.finalizar()
+
+        // Finalizamos el monitor
+        Reporte.info("Finalizando monitorización")
+        Monitor.finalizar()
+
+        // Finalizamos el lector
+        if (lector != null && lector.estado == "ACTIVO") {
+            Reporte.info("Finalizando lectura de tags")
+            lector.finalizarLectura()
+        }
+
+        // Finalizamos la máquina
+        if (maquina != null && maquina.estado == "OK") {
+            Reporte.info("Finalizando la máquina ${maquina.nombre}")
+            maquina.apagar(final = true)
+        }
+        else {
             Reporte.error("No hay máquina configurada!")
         }
     }
@@ -146,10 +167,9 @@ object etapa3: TagTimeout {
                 // Generamos reporte
                 Reporte.info("Máquina ${maquina.nombre} fin alarma sonora")
                 // Pasamos al estado anterior
-                estado = 3
-            }
+                estado = 2
 
+            }
         }
     }
-
 }

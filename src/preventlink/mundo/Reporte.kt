@@ -31,13 +31,17 @@ class Reporte {
 
         fun error(mensaje: String) {
             logger.error(mensaje)
+            println("ERROR: $mensaje")
         }
 
         fun excepcion(ex: Exception) {
             logger.error(ex.toString())
         }
 
-        fun info(mensaje: String) = logger.info(mensaje)
+        fun info(mensaje: String) {
+            logger.info(mensaje)
+            println("INFO: $mensaje")
+        }
         fun adv(mensaje: String) = logger.warn(mensaje)
     }
 }

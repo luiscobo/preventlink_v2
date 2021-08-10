@@ -13,7 +13,6 @@ package preventlink.mundo
 
 import preventlink.Utils
 import java.lang.Exception
-import javax.swing.plaf.TableHeaderUI
 
 /**
  * Un GPIO es un objeto que permite conectarse con la máquina y generar
@@ -25,10 +24,14 @@ class GPIO(var identificador: String,
            var verde: Int,
            var ambar: Int,
            var rojo: Int,
-           val rele: Int) {
+           var rele1: Int,
+           var rele2: Int,
+           var rele3: Int,
+           var activo: Boolean) {
 
     // Permite guardar este objeto en el archivo de configuracion HCL
     fun convertirHCL(builder: StringBuilder) {
+        val s = if (activo) "SI" else "NO"
         with(builder) {
             appendLine("GPIO \"$identificador\" {")
             appendLine("  ip = \"$ip\"")
@@ -36,7 +39,10 @@ class GPIO(var identificador: String,
             appendLine("  puertoVerde = $verde" )
             appendLine("  puertoAmbar = $ambar")
             appendLine("  puertoRojo = $rojo")
-            appendLine("  puertoRele = $rele")
+            appendLine("  puertoRele1 = $rele1")
+            appendLine("  puertoRele2 = $rele2")
+            appendLine("  puertoRele3 = $rele3")
+            appendLine("  activo = \"$s\"")
             appendLine("}")
         }
     }
@@ -46,7 +52,10 @@ class GPIO(var identificador: String,
      * al puerto dado. Retorna el estado anterior del puerto.
      */
     fun encender(puerto: Int): Boolean? {
-        return Utils.enviarComandoGPIO(ip, puertoConexion, puerto, true)
+        if (activo) {
+            return Utils.enviarComandoGPIO(ip, puertoConexion, puerto, true)
+        }
+        return null
     }
 
     /**
@@ -54,7 +63,10 @@ class GPIO(var identificador: String,
      * puerto dado. Retorna el estado anterior del puerto
      */
     fun apagar(puerto: Int): Boolean? {
-        return Utils.enviarComandoGPIO(ip, puertoConexion, puerto, false)
+        if (activo) {
+            return Utils.enviarComandoGPIO(ip, puertoConexion, puerto, false)
+        }
+        return null
     }
 
     fun encenderRojo() = encender(rojo)
@@ -63,8 +75,12 @@ class GPIO(var identificador: String,
     fun apagarAmbar() = apagar(ambar)
     fun encenderVerde() = encender(verde)
     fun apagarVerde() = apagar(verde)
-    fun encenderRele() = encender(rele)
-    fun apagarRele() = apagar(rele)
+    fun encenderRele1() = encender(rele1)
+    fun apagarRele1() = apagar(rele1)
+    fun encenderRele2() = encender(rele2)
+    fun apagarRele2() = apagar(rele2)
+    fun encenderRele3() = encender(rele3)
+    fun apagarRele3() = apagar(rele3)
 
     companion object {
         /**
@@ -78,9 +94,12 @@ class GPIO(var identificador: String,
                 val puertoVerde = (gpioInfo["puertoVerde"] as Double).toInt()
                 val puertoAmbar = (gpioInfo["puertoAmbar"] as Double).toInt()
                 val puertoRojo = (gpioInfo["puertoRojo"] as Double).toInt()
-                val puertoRele = (gpioInfo["puertoRele"] as Double).toInt()
+                val puertoRele1 = (gpioInfo["puertoRele1"] as Double).toInt()
+                val puertoRele2 = (gpioInfo["puertoRele2"] as Double).toInt()
+                val puertoRele3 = (gpioInfo["puertoRele3"] as Double).toInt()
+                val activo = gpioInfo["activo"].toString() == "SI"
 
-                return GPIO(identificador, ip, puertoConexion, puertoVerde, puertoAmbar, puertoRojo, puertoRele)
+                return GPIO(identificador, ip, puertoConexion, puertoVerde, puertoAmbar, puertoRojo, puertoRele1, puertoRele2, puertoRele3, activo)
             }
             return null
         }
@@ -90,6 +109,9 @@ class GPIO(var identificador: String,
      * Inica la simulación del GPIO
      */
     fun iniciar() {
+        if (!activo) {
+            return
+        }
         try {
             encenderVerde()
             Thread.sleep(50)
@@ -109,8 +131,13 @@ class GPIO(var identificador: String,
             apagarVerde()
             Thread.sleep(50)
 
-            encenderRele()
+            encenderRele1()
             Thread.sleep(50)
+            encenderRele2()
+            Thread.sleep(50)
+            encenderRele3()
+            Thread.sleep(50)
+
         }
         catch (ex: Exception) {
             Reporte.excepcion(ex)
@@ -131,7 +158,14 @@ class GPIO(var identificador: String,
             apagarVerde()
             Thread.sleep(300)
 
-            apagarRele()
+            apagarRele1()
+            Thread.sleep(50)
+
+            apagarRele2()
+            Thread.sleep(50)
+
+            apagarRele3()
+            Thread.sleep(50)
         }
         catch (ex: Exception) {
             Reporte.excepcion(ex)

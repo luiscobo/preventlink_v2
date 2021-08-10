@@ -1,39 +1,39 @@
 package preventlink.tests;
 
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.Socket;
+import preventlink.Utils;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 public class HTTPClient {
-    public static void HTTPRequest(String ipAddress) throws Exception {
-        Socket s = new Socket(ipAddress, 80);
+    private static final String USER_AGENT = "Mozilla/5.0";
+    private static void sendGET(String GET_URL) throws IOException {
+        URL obj = new URL(GET_URL);
+        HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+        con.setRequestMethod("GET");
+        con.setRequestProperty("User-Agent", USER_AGENT);
+        int responseCode = con.getResponseCode();
+        System.out.println("GET Response Code :: " + responseCode);
+        if (responseCode == HttpURLConnection.HTTP_OK) { // success
+            BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
+            String inputLine;
+            StringBuffer response = new StringBuffer();
 
-        OutputStream out = s.getOutputStream();
-        InputStream in = s.getInputStream();
-
-        String request = "GET /?op=output&data=port.7&data=state.0\r\n" +
-                "Accept: */*\r\n" +
-                "Host: " + ipAddress + "\r\n" +
-                "Connection: Close\r\n\r\n";
-
-        out.write(request.getBytes());
-
-        StringBuffer response = new StringBuffer();
-        byte[] buffer = new byte[4096];
-        int bytesRead;
-
-        while ((bytesRead = in.read(buffer, 0, 4096)) != -1) {
-            for (int i = 0; i < bytesRead; i++) {
-                response.append((char) buffer[i]);
+            while ((inputLine = in.readLine()) != null) {
+                response.append(inputLine);
             }
+            in.close();
+
+            // print result
+            System.out.println(response.toString());
+        } else {
+            System.out.println("GET request not worked");
         }
-
-        s.close();
-
-        System.out.println(response);
     }
-
     public static void main(String[] args) throws Exception {
-        HTTPRequest("192.168.1.50");
+        sendGET("http://192.168.0.29/status");
     }
 }

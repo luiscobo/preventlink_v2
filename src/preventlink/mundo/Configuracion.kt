@@ -11,7 +11,6 @@
  */
 package preventlink.mundo
 
-import java.io.ObjectInputFilter
 import java.util.ArrayList
 
 /**
@@ -24,19 +23,23 @@ data class Configuracion(var identificador: String,
                          var tiempoAusenciaMaximo: Long,
                          var maquinaID: String,
                          var lectorID: String,
-                         var epps: ArrayList<String>) {
+                         var epps: ArrayList<String>,
+                         var sensores: ArrayList<String>) {
 
     // Convierte esta configuración al formato HCL
     fun convertirHCL(builder: StringBuilder) {
-        var s = "["
+        fun fromListToString(lst: ArrayList<String>): String {
+            var s = "["
 
-        for (i in 0 until epps.size) {
-            s += '"' + epps[i] + '"'
-            if (i != epps.size - 1) {
-                s += ", "
+            for (i in 0 until lst.size) {
+                s += '"' + lst[i] + '"'
+                if (i != lst.size - 1) {
+                    s += ", "
+                }
             }
+            s += "]"
+            return s
         }
-        s += "]"
         with(builder) {
             appendLine("configuracion \"$identificador\" {")
             appendLine("  gpio = \"$gpioID\"")
@@ -44,13 +47,17 @@ data class Configuracion(var identificador: String,
             appendLine("  tiempoDeAusenciaMaximo = $tiempoAusenciaMaximo")
             appendLine("  maquina = \"$maquinaID\"")
             appendLine("  lector = \"$lectorID\"")
-            appendLine("  epps = $s")
+            appendLine("  epps = ${fromListToString(epps)}")
+            appendLine("  sensores = ${fromListToString(sensores)}")
             appendLine("}")
         }
     }
 
     // Numero de EPPS
     fun numeroEPPS() = epps.size
+
+    // Cantidad de sensores
+    fun numSensores() = sensores.size
 
     companion object {
         /**
@@ -65,7 +72,8 @@ data class Configuracion(var identificador: String,
                 val maquinaID = configInfo["maquina"].toString()
                 val lectorID = configInfo["lector"].toString()
                 val epps = configInfo["epps"] as ArrayList<String>
-                return Configuracion(identificador, gpioID, tiempoAusenciaMinimo, tiempoAusenciaMaximo, maquinaID, lectorID, epps)
+                val sensors = configInfo["sensores"] as ArrayList<String>
+                return Configuracion(identificador, gpioID, tiempoAusenciaMinimo, tiempoAusenciaMaximo, maquinaID, lectorID, epps, sensors)
             }
             return null
         }

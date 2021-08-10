@@ -1,9 +1,10 @@
-/**~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/**
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * $Id: EPP.kt, v 1.0 2021/05/12 17:24 lacobo $
  * Universidad Ean (Bogotá - Colombia)
  * Grupo de Investigación Tecnológico ONTARE
  * Licenciado bajo el esquema Academic Free License version 2.1
- *
+ * <p>
  * Proyecto PreventLink
  * Autor: Luis Cobo - 23/05/2021
  * Modificado por:
@@ -11,16 +12,18 @@
  */
 package preventlink;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
+import java.net.HttpURLConnection;
 import java.net.Socket;
+import java.net.URL;
 
 /**
  * En esta clase tendremos varias funciones de utilidad para el resto
  * de partes de la aplicación.
  */
 public class Utils {
+    private static final String USER_AGENT = "Mozilla/5.0";
+
     /**
      * Permite enviar un determinado comando al GPIO que se encuentra en la dirección
      * IP, al puerto dado, y el valor booleano puede ser true para enviar una señal
@@ -68,6 +71,36 @@ public class Utils {
                 return resp.endsWith("1");
             }
 
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+
+    }
+
+    public static String obtenerEstado(String direccionIP, int puerto) {
+        try {
+            String url = String.format("http://%s:%d/status", direccionIP, puerto);
+            URL obj = new URL(url);
+            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+            con.setRequestMethod("GET");
+            con.setRequestProperty("User-Agent", USER_AGENT);
+            int responseCode = con.getResponseCode();
+            //System.out.println("GET Response Code :: " + responseCode);
+            if (responseCode == HttpURLConnection.HTTP_OK) { // success
+                BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
+                String inputLine;
+                StringBuffer response = new StringBuffer();
+
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
+                }
+                in.close();
+
+                // print result
+                return response.toString();
+            }
         }
         catch (IOException e) {
             e.printStackTrace();
