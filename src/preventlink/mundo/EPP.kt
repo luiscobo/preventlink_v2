@@ -21,7 +21,8 @@ class EPP (var identificador: String,
            var nombre: String,
            var descripcion: String,
            var esVerificacion: Boolean,
-           var activo: Boolean) {
+           var activo: Boolean,
+           var maquina: String) {
 
     // Con este atributo podemos saber cuando se obtuvo por última vez este EPP
     private var _tiempo: Long = 0L
@@ -58,6 +59,7 @@ class EPP (var identificador: String,
             appendLine("  descripcion = \"$descripcion\"")
             appendLine("  esVerificacion = \"$res\"")
             appendLine("  activo = \"$act\"")
+            appendLine("  maquina = \"$maquina\"")
             appendLine("}")
         }
     }
@@ -67,7 +69,6 @@ class EPP (var identificador: String,
      */
     fun registrarLectura(contador: Int, tiempo: Long) {
         tiempoLocal = Instant.now().toEpochMilli()
-        Reporte.info("Tiempo local = $tiempoLocal")
         _tiempo = tiempo
         _contador += contador
     }
@@ -78,6 +79,7 @@ class EPP (var identificador: String,
         fun leerDesdeConfiguracionHCL(identificador: String, eppInfo: Map<String,Any?>): EPP? {
             val codigo: String
             val nombre: String
+            val maquina: String
             val descripcion: String
             val esVerificacion: Boolean
 
@@ -87,11 +89,10 @@ class EPP (var identificador: String,
                 descripcion = eppInfo["descripcion"].toString()
                 esVerificacion = eppInfo["esVerificacion"].toString().uppercase() == "SI"
                 val activo = eppInfo["activo"].toString().uppercase() == "SI"
-                return EPP(identificador, codigo, nombre, descripcion, esVerificacion, activo)
+                maquina = eppInfo["maquina"].toString()
+                return EPP(identificador, codigo, nombre, descripcion, esVerificacion, activo, maquina)
             }
             return null
-
         }
     }
-
 }

@@ -18,12 +18,10 @@ import java.util.ArrayList
  * elementos que trabajan juntos
  */
 data class Configuracion(var identificador: String,
-                         var gpioID: String,
                          var tiempoAusenciaMinimo: Long,
                          var tiempoAusenciaMaximo: Long,
-                         var maquinaID: String,
+                         var monitores: ArrayList<String>,
                          var lectorID: String,
-                         var epps: ArrayList<String>,
                          var sensores: ArrayList<String>) {
 
     // Convierte esta configuración al formato HCL
@@ -42,22 +40,20 @@ data class Configuracion(var identificador: String,
         }
         with(builder) {
             appendLine("configuracion \"$identificador\" {")
-            appendLine("  gpio = \"$gpioID\"")
             appendLine("  tiempoDeAusenciaMinimo = $tiempoAusenciaMinimo")
             appendLine("  tiempoDeAusenciaMaximo = $tiempoAusenciaMaximo")
-            appendLine("  maquina = \"$maquinaID\"")
+            appendLine("  monitores = \"${fromListToString(monitores)}\"")
             appendLine("  lector = \"$lectorID\"")
-            appendLine("  epps = ${fromListToString(epps)}")
             appendLine("  sensores = ${fromListToString(sensores)}")
             appendLine("}")
         }
     }
 
-    // Numero de EPPS
-    fun numeroEPPS() = epps.size
-
     // Cantidad de sensores
     fun numSensores() = sensores.size
+
+    // Cantidad de monitores
+    fun numMonitores() = monitores.size
 
     companion object {
         /**
@@ -66,14 +62,12 @@ data class Configuracion(var identificador: String,
         @JvmStatic
         fun leerDesdeConfiguracionHCL(identificador: String, configInfo: Map<String, Any?>): Configuracion? {
             if (configInfo.isNotEmpty()) {
-                val gpioID = configInfo["gpio"].toString()
                 val tiempoAusenciaMinimo = configInfo["tiempoDeAusenciaMinimo"]!!.toString().toDouble().toLong()
                 val tiempoAusenciaMaximo = configInfo["tiempoDeAusenciaMaximo"]!!.toString().toDouble().toLong()
-                val maquinaID = configInfo["maquina"].toString()
                 val lectorID = configInfo["lector"].toString()
-                val epps = configInfo["epps"] as ArrayList<String>
+                val monitores = configInfo["monitores"] as ArrayList<String>
                 val sensors = configInfo["sensores"] as ArrayList<String>
-                return Configuracion(identificador, gpioID, tiempoAusenciaMinimo, tiempoAusenciaMaximo, maquinaID, lectorID, epps, sensors)
+                return Configuracion(identificador, tiempoAusenciaMinimo, tiempoAusenciaMaximo, monitores, lectorID, sensors)
             }
             return null
         }

@@ -96,7 +96,7 @@ data class Lector(var IP: String,
      */
     fun activar(): Boolean {
         if (estado == "INACTIVO" || activo) {
-            Reporte.error("Lector activo!")
+            Reporte.error("Lector inactivo! o ya en funcionamiento")
             return false  // Si el estado no es activo, termine
         }
 

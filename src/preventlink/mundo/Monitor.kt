@@ -11,7 +11,11 @@
  */
 package preventlink.mundo
 
+import preventlink.Etapa1
+import preventlink.Etapa2
+import preventlink.Etapa3
 import java.util.*
+import kotlin.collections.ArrayList
 import kotlin.concurrent.fixedRateTimer
 
 /**
@@ -26,9 +30,91 @@ interface TagTimeout {
  * Un monitor es un programa que cada segundo está pendiente de los EPP
  * y es un observador
  */
-object Monitor {
+class Monitor(
+    var identificador: String,
+    var nombre: String,
+    var esperaInicial: Long,
+    var periodo: Long,
+    var epps: ArrayList<String>,
+    var maquina: String,
+    var activo: Boolean
+) {
+
+    /**
+     * Atributos
+     */
     private val observadores: MutableList<TagTimeout> = mutableListOf()
     private var timer: Timer? = null
+
+    var estado = 0
+
+    private fun q(str: String) = "\"$str\""
+
+    private fun fromListToString(lst: ArrayList<String>): String {
+        var s = "["
+
+        for (i in 0 until lst.size) {
+            s += '"' + lst[i] + '"'
+            if (i != lst.size - 1) {
+                s += ", "
+            }
+        }
+        s += "]"
+        return s
+    }
+
+    /**
+     * Métodos
+     */
+    // Esta función exporta el monitor al formato HCL
+    fun convertirHCL(builder: StringBuilder) {
+        val act = if (activo) "SI" else "NO"
+        with (builder) {
+            appendLine("monitor ${q(identificador)} {")
+            appendLine("  nombre = ${q(nombre)}")
+            appendLine("  esperaInicial = ${esperaInicial.toDouble()}")
+            appendLine("  periodo = ${periodo.toDouble()}")
+            appendLine("  epps = ${q(fromListToString(epps))}")
+            appendLine("  maquina = ${q(maquina)}")
+            appendLine("  activo = ${q(act)}")
+            appendLine("}")
+        }
+    }
+
+    /**
+     * Permite obtener la máquina asociada a este monitor
+     */
+    fun maquinaMonitor(): Maquina? {
+        val escenario = Escenario.instance()
+        return escenario.maquina(this.maquina)
+    }
+
+    /**
+     * Este objeto permite obtener la información del monitor desde la configuración
+     */
+    companion object {
+        // Permite obtener la información del monitor desde el archivo de configuración
+        @JvmStatic
+        fun leerDesdeConfiguracionHCL(identificador: String, monitorInfo: Map<String, Any?>): Monitor? {
+            val nombre: String
+            val esperaInicial: Long
+            val periodo: Long
+            val epps: ArrayList<String>
+            val maquina: String
+            val activo: Boolean
+
+            if (monitorInfo.isNotEmpty()) {
+                nombre = monitorInfo["nombre"].toString()
+                esperaInicial = monitorInfo["esperaInicial"].toString().toDouble().toLong()
+                periodo = monitorInfo["periodo"].toString().toDouble().toLong()
+                epps = monitorInfo["epps"] as ArrayList<String>
+                maquina = monitorInfo["maquina"].toString()
+                activo = monitorInfo["activo"].toString().uppercase() == "SI"
+                return Monitor(identificador, nombre, esperaInicial, periodo, epps, maquina, activo)
+            }
+            return null
+        }
+    }
 
     /**
      * Agregar un nuevo observador a la lista
@@ -57,11 +143,33 @@ object Monitor {
      * Inicia la tarea del monitor
      */
     fun iniciar() {
-        val escenario = Escenario.instance()
-        if (escenario != null) {
-            timer = fixedRateTimer(escenario.monitorNombre,false, escenario.monitorDemoraInicial, escenario.monitorPeriodo) {
-                Monitor.evaluarTiemposEPPs()
-            }
+
+        // El estado inicial es 1
+        estado = 1
+
+        // Creamos las diversas etapas del monitor
+        this.agregarObservador(Etapa1(this))
+        this.agregarObservador(Etapa2(this))
+        this.agregarObservador(Etapa3(this))
+
+        // Iniciamos el timer
+        timer = fixedRateTimer(this.nombre, false, this.esperaInicial.toLong(), this.periodo.toLong()) {
+            evaluarTiemposEPPs()
+        }
+
+        // Iniciamos la máquina asociada
+        this.iniciarMaquina()
+    }
+
+    /**
+     * Inicia la máquina asocidad a este monitor
+     */
+    fun iniciarMaquina() {
+        val machine = this.maquinaMonitor()
+
+        if (machine != null && machine.estado == "OK") {
+            Reporte.info("Iniciando la máquina ${machine.nombre}")
+            machine.apagar(final = true)
         }
     }
 
@@ -75,17 +183,17 @@ object Monitor {
             if (conf != null) {
                 var tagSupMax = 0
                 var tagSupMin = 0
+
                 // Primero los tags
-                for (tagId in conf.epps) {
+                for (tagId in this.epps) {
                     val epp = escenario.epps[tagId]
                     if (epp != null && epp.activo) {
                         val t = epp.tiempoUltimaPresencia
                         Reporte.info("Tiempo para el tag $tagId = $t")
                         if (t >= conf.tiempoAusenciaMaximo) {
-                            Reporte.info("Tiempo del EPP $tagId superado")
+                            Reporte.info("  Tiempo del EPP $tagId superado")
                             tagSupMax++
-                        }
-                        else if (epp.tiempoLocal == 0L || t >= conf.tiempoAusenciaMinimo) {
+                        } else if (epp.tiempoLocal == 0L || t >= conf.tiempoAusenciaMinimo) {
                             tagSupMin++
                         }
                     }
@@ -109,7 +217,6 @@ object Monitor {
                 generarEvento(tagSupMin, tagSupMax)
             }
         }
-
     }
 
     /**
@@ -120,7 +227,15 @@ object Monitor {
             timer!!.cancel()
             timer = null
             observadores.clear()
+            apagarMaquina()
         }
     }
 
+    private fun apagarMaquina() {
+        val maq = this.maquinaMonitor()
+        if (maq != null && maq.estado == "OK") {
+            Reporte.info("Finalizando la máquina ${maq.nombre}")
+            maq.apagar(final = true)
+        }
+    }
 }

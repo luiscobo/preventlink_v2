@@ -35,11 +35,7 @@ data class Escenario(val nombreArchivo: String) {
 
     var configuraciones: HashMap<String, Configuracion> = HashMap()
 
-    var monitorNombre: String = "MonitorPreventLink"
-
-    var monitorDemoraInicial: Long = 1000L
-
-    var monitorPeriodo: Long = 1000L
+    var monitores: HashMap<String, Monitor> = HashMap()
 
     var comunicadorNombre: String = "ComunicadorPreventLink"
 
@@ -80,6 +76,19 @@ data class Escenario(val nombreArchivo: String) {
                     }
                 }
             }
+
+            // Ahora vamos con los diversos monitores
+            val monitorInfoLista = res["monitor"] as Map<String, Any?>?
+            if (monitorInfoLista != null) {
+                for (identificadorMonitor in monitorInfoLista.keys) {
+                    val monitorInfo = monitorInfoLista[identificadorMonitor] as Map<String, Any?>
+                    val monitor = Monitor.leerDesdeConfiguracionHCL(identificadorMonitor, monitorInfo)
+                    if (monitor != null) {
+                        this.monitores[identificadorMonitor] = monitor
+                    }
+                }
+            }
+
             // Ahora vamos con las máquinas
             val maquinaInfoLista = res["maquina"] as Map<String, Any?>?
             if (maquinaInfoLista != null) {
@@ -134,19 +143,8 @@ data class Escenario(val nombreArchivo: String) {
             if (res["escenario"] != null) {
                 this.nombre = res["escenario"].toString()
             }
-            if (res["monitor"] != null) {
-                val monitorInfo = res["monitor"] as Map<String, Any?>
-                if (monitorInfo["nombre"] != null) {
-                    monitorNombre = monitorInfo["nombre"]!!.toString()
-                }
-                if (monitorInfo["esperaInicial"] != null) {
-                    monitorDemoraInicial = monitorInfo["esperaInicial"]!!.toString().toDouble().toLong()
-                }
-                if (monitorInfo["periodo"] != null) {
-                    monitorPeriodo = monitorInfo["periodo"]!!.toString().toDouble().toLong()
-                }
-            }
 
+            // La información del comunicador
             if (res["comunicador"] != null) {
                 val info = res["comunicador"] as Map<String, Any?>
                 if (info["nombre"] != null) {
@@ -195,6 +193,10 @@ data class Escenario(val nombreArchivo: String) {
         for (config in configuraciones.values) {
             config.convertirHCL(builder)
         }
+        // No olvidemos los monitores
+        for (monitor in monitores.values) {
+            monitor.convertirHCL(builder)
+        }
         // Retornamos
         return builder.toString()
     }
@@ -238,41 +240,33 @@ data class Escenario(val nombreArchivo: String) {
     }
 
     /**
-     * Permite obtener el gpio de la configuracion actual
+     * Permite obtener la máquina de la configuracion actual
      */
-    fun gpioConfiguracionActual(): GPIO? {
-        val conf = configuracionActual()
-        if (conf != null) {
-            return gpios[conf.gpioID]
-        }
-        return null
+    fun maquina(maquinaID: String): Maquina? {
+        return maquinas[maquinaID]
     }
 
     /**
-     * Permite obtener la máquina de la configuracion actual
+     * Permite obtener el monitor con el identificador dado
      */
-    fun maquinaConfiguracionActual(): Maquina? {
-        val conf = configuracionActual()
-        if (conf != null) {
-            return maquinas[conf.maquinaID]
-        }
-        return null
+    fun monitor(monitorID: String): Monitor? {
+        return monitores[monitorID]
     }
 
     /**
      * Llegó una lectura, hay que validar que la EPP y la IP están correctas
      */
     fun esValidaLaLectura(tagId: String, lectorDireccionIP: String): Boolean {
-        val conf = configuracionActual() ?: return false
-        val lector = lectorConfiguracionActual() ?: return false
+        val lector = this.lectorConfiguracionActual() ?: return false
         if (lector.IP == lectorDireccionIP) {
-            if (tagId in conf.epps) {
-                return true
+            for (m in monitores.values) {
+                if (tagId in m?.epps) {
+                    return true   // Hay un monitor pendiente de este tag
+                }
             }
         }
         return false
     }
-
 
 }
 

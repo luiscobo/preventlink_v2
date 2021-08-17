@@ -1,9 +1,21 @@
 escenario = "Escenario de prueba"
 
-monitor {
-  nombre = "MonitorPrincipal"
+monitor "monitorTorno" {
+  nombre = "MonitorTorno"
   esperaInicial = 1000.0
   periodo = 1000.0
+  epps = ["AD29140012199986600000AE", "AD2914001218B18763000096", "AD291400121911866600009F"]
+  maquina = "torno01"
+  activo = "NO"
+}
+
+monitor "monitorSierra" {
+  nombre = "MonitorSierra"
+  esperaInicial = 1000.0
+  periodo = 1000.0
+  epps = ["AD291400121A2986650000BC", "CCCCFB63AC1F3841EC880467"]
+  maquina = "sierra01"
+  activo = "SI"
 }
 
 comunicador {
@@ -40,9 +52,7 @@ configuracion "prueba-23-05-2021" {
   lector = "lector1"
   tiempoDeAusenciaMinimo = 10000   # En milisegundos
   tiempoDeAusenciaMaximo = 15000   # Tiempo en milisegundos
-  maquina = "torno01"
-  gpio = "gpioPrincipal"
-  epps = ["AD29140012199986600000AE", "AD2914001218B18763000096", "AD291400121911866600009F"]
+  monitores = ["monitorTorno", "monitorTorno"]
   sensores = ["careta"]
 }
 
@@ -60,12 +70,25 @@ gpio "gpioPrincipal" {
   activo = "SI"
 }
 
+gpio "gpioSecundario" {
+  ip = "192.168.1.102"
+  puertoConexion = 80
+  puertoVerde = 2
+  puertoAmbar = 23
+  puertoRojo = 15
+  puertoRele1 = 4
+  puertoRele2 = 5
+  puertoRele3 = 18
+  activo = "SI"
+}
+
 epp "AD29140012199986600000AE" {
   codigo = "AD29140012199986600000AE"
   nombre = "casco"
   descripcion = "Este es el identificador del casco"
   esVerificacion = "SI"
   activo = "SI"
+  maquina = "torno01"
 }
 
 epp "AD291400121A2986650000BC" {
@@ -74,6 +97,7 @@ epp "AD291400121A2986650000BC" {
   descripcion = "Este el RFID para las gafas que lleva el operador"
   esVerificacion = "SI"
   activo = "SI"
+  maquina = "sierra01"
 }
 
 epp "CCCCFB63AC1F3841EC880467" {
@@ -82,6 +106,7 @@ epp "CCCCFB63AC1F3841EC880467" {
   descripcion = "Este el RFID para las gafas que lleva el operador"
   esVerificacion = "SI"
   activo = "SI"
+  maquina = "sierra01"
 }
 
 epp "AD2914001218B18763000096" {
@@ -90,6 +115,7 @@ epp "AD2914001218B18763000096" {
   descripcion = "Este el RFID para las gafas que lleva el operador"
   esVerificacion = "SI"
   activo = "SI"
+  maquina = "torno01"
 }
 
 epp "AD291400121911866600009F" {
@@ -98,15 +124,23 @@ epp "AD291400121911866600009F" {
   descripcion = "Este el RFID para las gafas que lleva el operador"
   esVerificacion = "SI"
   activo = "SI"
+  maquina = "torno01"
 }
-
-
 
 maquina "torno01" {
   tipo = "Maquinaria de laboratorio"
   nombre = "Torno"
   estado = "OK"
   descripcion = "El torno del laboratorio"
+  gpio = "gpioPrincipal"
+}
+
+maquina "sierra01" {
+  tipo = "Maquinaria de laboratorio"
+  nombre = "Sierra"
+  estado = "OK"
+  descripcion = "La sierra del laboratorio"
+  gpio = "gpioSecundario"
 }
 
 sensor "careta" {

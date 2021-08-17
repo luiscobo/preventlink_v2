@@ -19,43 +19,30 @@ import preventlink.mundo.*
  */
 fun main() {
     val escenario = Escenario.instance()
+    val configuracion = escenario.configuracionActual()
 
     println("================PREVENTLINK====================")
 
     if (escenario != null) {
         val lector: Lector? = escenario.lectorConfiguracionActual()
-        val maquina = escenario.maquinaConfiguracionActual()
         if (lector != null) {
             Reporte.info("Conectandose al lector en la dirección ${lector.IP}")
             if (lector.activar()) {
                 Reporte.info("Iniciando lectura de datos")
                 lector.iniciarLectura()
             }
-        }
-        else {
+        } else {
             Reporte.error("No hay lector de RFID configurado")
         }
 
         // Ahora que el lector arrancó, iniciamos el monitor
         Reporte.info("Iniciando monitorización")
-        estado = 1
-        Monitor.agregarObservador(etapa1)
-        Monitor.agregarObservador(etapa2)
-        Monitor.agregarObservador(etapa3)
-        Monitor.iniciar()
+        // Iniciar los monitores
+        iniciarMonitores()
 
         // Arrancamos el comunicador
         Reporte.info("Iniciando comunicación con sensores")
         ComunicadorSensores.iniciar()
-
-        // Ahora iniciamos la máquina
-        if (maquina != null && maquina.estado == "OK") {
-            Reporte.info("Iniciando la máquina ${maquina.nombre}")
-            maquina.apagar(final = true)
-        }
-        else {
-            Reporte.error("No hay máquina configurada!")
-        }
 
         println("Entre ENTER para finalizar")
         readLine()!!
@@ -66,21 +53,12 @@ fun main() {
 
         // Finalizamos el monitor
         Reporte.info("Finalizando monitorización")
-        Monitor.finalizar()
+        finalizarMonitores()
 
         // Finalizamos el lector
         if (lector != null && lector.estado == "ACTIVO") {
             Reporte.info("Finalizando lectura de tags")
             lector.finalizarLectura()
-        }
-
-        // Finalizamos la máquina
-        if (maquina != null && maquina.estado == "OK") {
-            Reporte.info("Finalizando la máquina ${maquina.nombre}")
-            maquina.apagar(final = true)
-        }
-        else {
-            Reporte.error("No hay máquina configurada!")
         }
     }
 
@@ -88,87 +66,124 @@ fun main() {
 }
 
 /**
- * Esta variable me indica en que estado me encuentro
+ * Esta clases permiten pasar de una etapa a otra con los lectores
  */
-var estado: Int = 0
+class Etapa1(val monitor: Monitor): TagTimeout {
 
-object etapa1: TagTimeout {
     override fun onTimeout(tagsAusentesMin: Int, tagsAusentesMax: Int) {
-        val escenario = Escenario.instance()
-        val conf = escenario.configuracionActual() ?: return
-        val maquina = escenario.maquinaConfiguracionActual() ?: return
-
-        if (estado == 1) {
-            if (maquina.encendida) {
-                return
+        if (monitor.estado == 1) {
+            val maquina = monitor.maquinaMonitor()
+            if (maquina != null && maquina.estado == "OK") {
+                if (maquina.encendida) {
+                    return
+                }
             }
-            Reporte.info("ETAPA1")
+            Reporte.info("ETAPA1 del monitor ${monitor.identificador}")
             // Si están todos los tags presente
             if (tagsAusentesMin == 0 && tagsAusentesMax == 0) {
                 // El GPIO habilita el sistema de encendido
-                maquina.encender()
+                if (maquina != null && maquina.estado == "OK") {
+                    maquina.encender()
+                }
                 // Se genera el reporte
-                Reporte.info("Máquina ${maquina.nombre} encedida")
-                estado = 2
+                Reporte.info("Máquina ${maquina?.nombre} encedida")
+                monitor.estado = 2
             }
         }
     }
 }
 
-object etapa2: TagTimeout {
-    override fun onTimeout(tagsAusentesMin: Int, tagsAusentesMax: Int) {
-        val escenario = Escenario.instance()
-        val conf = escenario.configuracionActual() ?: return
-        val maquina = escenario.maquinaConfiguracionActual() ?: return
+class Etapa2(val monitor: Monitor): TagTimeout {
 
-        if (estado == 2) {
-            if (!maquina.encendida) {
-                // Maquina apagada? Salir
-                return
+    override fun onTimeout(tagsAusentesMin: Int, tagsAusentesMax: Int) {
+        val maquina = monitor.maquinaMonitor()
+        if (monitor.estado == 2) {
+            if (maquina != null && maquina.estado == "OK")  {
+                if (!maquina.encendida) {
+                    // Maquina apagada? Salir
+                    return
+                }
             }
-            Reporte.info("ETAPA2")
+            Reporte.info("ETAPA2 del monitor ${monitor.identificador}")
             if (tagsAusentesMax > 0) {
-                Reporte.info("Máquina ${maquina.nombre} fin alarma sonora")
-                maquina.alarmaSonora(false)
-                estado = 3
+                Reporte.info("Máquina ${maquina?.nombre} fin alarma sonora")
+                if (maquina != null && maquina.estado == "OK") {
+                    maquina.alarmaSonora(false)
+                }
+                monitor.estado = 3
             }
             else if (tagsAusentesMin > 0) {
-                Reporte.info("Máquina ${maquina.nombre} inicio alarma sonora")
-                maquina.alarmaSonora(true)
-                estado = 3
+                Reporte.info("Máquina ${maquina?.nombre} inicio alarma sonora")
+                if (maquina != null && maquina.estado == "OK") {
+                    maquina.alarmaSonora(true)
+                }
+                monitor.estado = 3
             }
         }
     }
 }
 
-object etapa3: TagTimeout {
-    override fun onTimeout(tagsAusentesMin: Int, tagsAusentesMax: Int) {
-        val escenario = Escenario.instance()
-        val conf = escenario.configuracionActual() ?: return
-        val maquina = escenario.maquinaConfiguracionActual() ?: return
+class Etapa3(val monitor: Monitor): TagTimeout {
 
-        if (estado == 3) {
-            if (!maquina.encendida) {
-                return
+    override fun onTimeout(tagsAusentesMin: Int, tagsAusentesMax: Int) {
+        val maquina = monitor.maquinaMonitor()
+
+        if (monitor.estado == 3) {
+            if (maquina != null && maquina.estado == "OK") {
+                if (!maquina.encendida) {
+                    return
+                }
             }
-            Reporte.info("ETAPA3")
+            Reporte.info("ETAPA3 del monitor ${monitor.identificador}")
             if (tagsAusentesMax > 0) {
-                // Apagamos la alarma sonora
-                maquina.alarmaSonora(false)
-                // Apagamos la máquina
-                maquina.apagar()
-                // Generamos el reporte
-                Reporte.info("Máquina ${maquina.nombre} apagada")
-                estado = 1
+                if (maquina != null && maquina.estado == "OK") {
+                    // Apagamos la alarma sonora
+                    maquina.alarmaSonora(false)
+                    // Apagamos la máquina
+                    maquina.apagar()
+                    // Generamos el reporte
+                    Reporte.info("Máquina ${maquina.nombre} apagada")
+                }
+                monitor.estado = 1
             }
             else if (tagsAusentesMin == 0) {
-                // Apagamos la alarma sonora
-                maquina.alarmaSonora(false)
-                // Generamos reporte
-                Reporte.info("Máquina ${maquina.nombre} fin alarma sonora")
-                // Pasamos al estado anterior
-                estado = 2
+                if (maquina != null && maquina.estado == "OK") {
+                    // Apagamos la alarma sonora
+                    maquina.alarmaSonora(false)
+                    // Generamos reporte
+                    Reporte.info("Máquina ${maquina.nombre} fin alarma sonora")
+                    // Pasamos al estado anterior
+                }
+                monitor.estado = 2
+            }
+        }
+    }
+}
 
+/**
+ * Iniciamos los monitores del escenario actual
+ */
+fun iniciarMonitores() {
+    val escenario = Escenario.instance()
+    val configuracion = escenario.configuracionActual()
+    if (configuracion != null) {
+        for (monitorId in configuracion.monitores) {
+            val m = escenario.monitor(monitorId)
+            if (m != null && m.activo) {
+                m.iniciar()
+            }
+        }
+    }
+}
+
+fun finalizarMonitores() {
+    val escenario = Escenario.instance()
+    val configuracion = escenario.configuracionActual()
+    if (configuracion != null) {
+        for (monitorId in configuracion.monitores) {
+            val m = escenario.monitor(monitorId)
+            if (m != null && m.activo) {
+                m.finalizar()
             }
         }
     }

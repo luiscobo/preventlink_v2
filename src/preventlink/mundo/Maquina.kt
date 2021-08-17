@@ -19,12 +19,14 @@ class Maquina(var identificador: String,
               var tipo: String,
               var nombre: String,
               var estado: String,  // Indica si está activa o inactiva
-              var descripcion: String) {
+              var descripcion: String,
+              var gpio: String) {
 
     // Para saber si la máquina está encendida o apagada
     private var _encendida: Boolean = false
     val encendida: Boolean
         get() = _encendida
+
 
     // Esta función exporta la máquina al formato HCL
     fun convertirHCL(builder: StringBuilder) {
@@ -34,6 +36,7 @@ class Maquina(var identificador: String,
             appendLine("  nombre = \"$nombre\"")
             appendLine("  estado = \"$estado\"")
             appendLine("  descripcion = \"$descripcion\"")
+            appendLine("  gpio = \"$gpio\"")
             appendLine("}")
         }
     }
@@ -49,13 +52,15 @@ class Maquina(var identificador: String,
             val nombre: String
             val estado: String
             val descripcion: String
+            val gpio: String
 
             if (maquinaInfo.isNotEmpty()) {
                 tipo = maquinaInfo["tipo"].toString()
                 nombre = maquinaInfo["nombre"].toString()
                 estado = maquinaInfo["estado"].toString()
                 descripcion = maquinaInfo["descripcion"].toString()
-                return Maquina(identificador, tipo, nombre, estado, descripcion)
+                gpio = maquinaInfo["gpio"].toString()
+                return Maquina(identificador, tipo, nombre, estado, descripcion, gpio)
             }
             return null
         }
@@ -75,12 +80,12 @@ class Maquina(var identificador: String,
 
         val escenario = Escenario.instance()
         if (escenario != null) {
-            val gpio = escenario.gpioConfiguracionActual()
+            val gpio = escenario.gpios[this.gpio]
             if (gpio != null) {
                 gpio!!.iniciar()
                 gpio!!.encenderVerde()
                 _encendida = true
-                Reporte.info("Máquina encendida")
+                Reporte.info("Máquina $nombre encendida")
             }
         }
     }
@@ -99,14 +104,14 @@ class Maquina(var identificador: String,
 
         val escenario = Escenario.instance()
         if (escenario != null) {
-            val gpio = escenario.gpioConfiguracionActual()
+            val gpio = escenario.gpios[this.gpio]
             if (gpio != null) {
                 gpio.finalizar()
                 if (!final) {
                     gpio.encenderRojo()
                 }
                 _encendida = false
-                Reporte.info("Maquina apagada")
+                Reporte.info("Maquina $nombre apagada")
             }
         }
     }
@@ -123,7 +128,7 @@ class Maquina(var identificador: String,
         }
         val escenario = Escenario.instance()
         if (escenario != null) {
-            val gpio = escenario.gpioConfiguracionActual()
+            val gpio = escenario.gpios[this.gpio]
             if (gpio != null) {
                 if (encender) {
                     gpio.encenderAmbar()
